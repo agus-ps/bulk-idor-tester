@@ -40,7 +40,7 @@ Beyond the status code, the extension calculates key metrics to avoid false posi
 You need Java JDK 17+ and Maven installed.
 
 ```bash
-git clone [https://github.com/YOUR_USERNAME/bulk-idor-tester.git](https://github.com/aguus-ps/bulk-idor-tester.git)
+git clone [https://github.com/agus-ps/bulk-idor-tester.git](https://github.com/agus-ps/bulk-idor-tester.git)
 cd bulk-idor-tester
 mvn clean package -DskipTests
 ```
