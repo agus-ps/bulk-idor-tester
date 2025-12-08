@@ -12,6 +12,7 @@ public class IdorTesterExtension implements BurpExtension {
     private static MontoyaApi api;
     private static List<RequestEntry> requestList = new ArrayList<>();
     private static IdorTesterPanel panel;
+    // Ahora guardaremos las reglas en formato interno: "ACTION|HEADER|VALUE"
     private static List<String> customHeaders = new ArrayList<>();
 
     @Override
@@ -51,18 +52,32 @@ public class IdorTesterExtension implements BurpExtension {
                 HttpRequest originalReq = entry.getRequest();
                 HttpRequest editedReq = originalReq;
 
-                // Aplicar headers
-                for (String headerLine : customHeaders) {
-                    if (headerLine.contains(":")) {
-                        String name = headerLine.substring(0, headerLine.indexOf(":")).trim();
-                        String value = headerLine.substring(headerLine.indexOf(":") + 1).trim();
-                        if (editedReq.headerValue(name) != null) {
-                            editedReq = editedReq.withUpdatedHeader(name, value);
+                // --- NUEVA LÓGICA DE REGLAS ---
+                for (String rule : customHeaders) {
+                    // Formato esperado: ACTION|NAME|VALUE
+                    String[] parts = rule.split("\\|", 3);
+                    if (parts.length >= 2) {
+                        String action = parts[0];
+                        String name = parts[1];
+                        String value = parts.length > 2 ? parts[2] : "";
+
+                        if ("REMOVE".equals(action)) {
+                            // Acción de borrado
+                            if (editedReq.headerValue(name) != null) {
+                                editedReq = editedReq.withRemovedHeader(name);
+                            }
                         } else {
-                            editedReq = editedReq.withAddedHeader(name, value);
+                            // Acción de Agregar/Reemplazar (Default)
+                            if (editedReq.headerValue(name) != null) {
+                                editedReq = editedReq.withUpdatedHeader(name, value);
+                            } else {
+                                editedReq = editedReq.withAddedHeader(name, value);
+                            }
                         }
                     }
                 }
+                // -----------------------------
+                
                 entry.setEditedRequest(editedReq);
 
                 // Enviar petición
@@ -73,7 +88,7 @@ public class IdorTesterExtension implements BurpExtension {
                 var response = responseResult.response();
                 entry.setResponse(response);
 
-                // --- CALCULAR SIMILITUD ---
+                // Calcular Similitud
                 int similarity = 0;
                 if (entry.getOriginalResponse() != null && response != null) {
                     String body1 = entry.getOriginalResponse().bodyToString();
@@ -95,14 +110,11 @@ public class IdorTesterExtension implements BurpExtension {
         }).start();
     }
 
-    // Algoritmo simple de similitud basado en Levenshtein (optimizado para textos largos)
-    // Retorna 0 a 100
     private static int calculateSimilarity(String s1, String s2) {
         if (s1 == null || s2 == null) return 0;
         if (s1.equals(s2)) return 100;
         if (s1.isEmpty() || s2.isEmpty()) return 0;
 
-        // Si son muy largos, recortamos para rendimiento (opcional, pero recomendado en Burp)
         if (s1.length() > 5000) s1 = s1.substring(0, 5000);
         if (s2.length() > 5000) s2 = s2.substring(0, 5000);
 
