@@ -4,8 +4,6 @@
 
 It allows you to capture multiple requests, modify their headers in bulk (e.g., to swap Session A for Session B or remove it entirely), and analyze the responses with an intelligent visual system that highlights suspicious behaviors.
 
-![Bulk IDOR Tester UI](screenshots/ui.png)
-
 ## 🔥 Key Features
 
 The plugin consists of three main modules integrated into a native interface:
