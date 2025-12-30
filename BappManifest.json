@@ -1,0 +1,18 @@
+{
+  "uuid": "0076de92-57c7-44bf-a64e-2209748fe210",
+  "name": "Bulk IDOR Tester",
+  "description": "Automates detection of IDOR and Access Control vulnerabilities by bulk header modification. Features include a traffic-light visual feedback system, similarity analysis using Levenshtein distance, and automatic length delta calculation.",
+  "author": "AgusPS",
+  "version": "1.0.0",
+  "script": {
+    "script_tool": "maven",
+    "build_command": "mvn package -DskipTests",
+    "filesystem_path": "target/bulk-idor-tester-1.0.0.jar"
+  },
+  "products": [
+    "Pro",
+    "Community"
+  ],
+  "min_platform_version": "2023.12.1",
+  "entry_point": "IdorTesterExtension"
+}
