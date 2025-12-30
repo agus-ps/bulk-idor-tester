@@ -7,7 +7,7 @@
     <groupId>io.github.agusps</groupId>
     <artifactId>bulk-idor-tester</artifactId>
     <name>Bulk IDOR Tester</name>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
