@@ -60,7 +60,7 @@ public class IdorTesterPanel extends JPanel {
         requestTable.setAutoCreateRowSorter(true);
 
         requestTable.setDefaultRenderer(Object.class, new IdorResultsRenderer());
-        requestTable.setRowHeight(25); 
+        requestTable.setRowHeight(25);
 
         setupRequestTableContextMenu(api);
         setupRequestTableSelectionListener();
@@ -104,11 +104,12 @@ public class IdorTesterPanel extends JPanel {
         drawerSplitPane.setDividerSize(0);
         drawerSplitPane.setBorder(null);
 
-        // Barra Lateral
+        // Barra Lateral (FIX: Colores dinámicos)
         JPanel buttonStrip = new JPanel();
         buttonStrip.setLayout(new BoxLayout(buttonStrip, BoxLayout.Y_AXIS));
-        buttonStrip.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.decode("#CCCCCC")));
-        buttonStrip.setBackground(new Color(245, 245, 245));
+        // FIX: Usamos el color de borde del sistema, no hardcodeado
+        buttonStrip.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, UIManager.getColor("Component.borderColor")));
+        // FIX: No seteamos background hardcodeado, dejamos que tome el del tema (o null)
 
         sidebarGroup = new ButtonGroup();
         JToggleButton btnHeaders = new VerticalToggleButton("Headers");
@@ -127,7 +128,7 @@ public class IdorTesterPanel extends JPanel {
     }
 
     // ========================================
-    // RENDERER SEMÁFORO
+    // RENDERER SEMÁFORO (ADAPTADO A DARK MODE)
     // ========================================
     class IdorResultsRenderer extends DefaultTableCellRenderer {
         @Override
@@ -140,24 +141,29 @@ public class IdorTesterPanel extends JPanel {
                     RequestEntry entry = requestListRef.get(modelRow);
 
                     if (entry.getResponse() == null) {
-                        c.setBackground(Color.WHITE);
-                        c.setForeground(Color.BLACK);
+                        // FIX: Usar colores de tabla por defecto
+                        c.setBackground(table.getBackground());
+                        c.setForeground(table.getForeground());
                     } else {
                         int origStatus = entry.getOriginalResponse() != null ? entry.getOriginalResponse().statusCode() : 0;
                         int newStatus = entry.getStatusCode();
 
+                        // Colores un poco más oscuros/saturados para que se vean bien en ambos temas
                         if (isSuccess(origStatus) && isSuccess(newStatus)) {
-                            c.setBackground(new Color(255, 220, 220));
-                            c.setForeground(new Color(180, 0, 0));
+                            // Rojo: Potencial vulnerabilidad
+                            c.setBackground(new Color(255, 100, 100, 100)); // Rojo semi-transparente
+                            c.setForeground(UIManager.getColor("Table.foreground"));
                         } else if (isSuccess(origStatus) && (newStatus == 401 || newStatus == 403)) {
-                            c.setBackground(new Color(220, 255, 220));
-                            c.setForeground(new Color(0, 100, 0));
+                            // Verde: Seguro
+                            c.setBackground(new Color(100, 255, 100, 100)); // Verde semi-transparente
+                            c.setForeground(UIManager.getColor("Table.foreground"));
                         } else if (origStatus != newStatus) {
-                            c.setBackground(new Color(255, 250, 200));
-                            c.setForeground(Color.BLACK);
+                            // Amarillo: Warning
+                            c.setBackground(new Color(255, 255, 100, 100)); // Amarillo semi-transparente
+                            c.setForeground(UIManager.getColor("Table.foreground"));
                         } else {
-                            c.setBackground(Color.WHITE);
-                            c.setForeground(Color.BLACK);
+                            c.setBackground(table.getBackground());
+                            c.setForeground(table.getForeground());
                         }
                     }
                 }
@@ -169,68 +175,59 @@ public class IdorTesterPanel extends JPanel {
     }
 
     // ========================================
-    // PANEL DE HEADERS (Lógica REMOVE Actualizada)
+    // PANEL DE HEADERS (FIXED THEME)
     // ========================================
     private JPanel createHeadersPanel() {
         JPanel container = new JPanel(new BorderLayout());
+        // FIX: Borde dinámico
         container.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 1, 0, 0, Color.LIGHT_GRAY), new EmptyBorder(10, 10, 10, 10)));
-        
+                BorderFactory.createMatteBorder(0, 1, 0, 0, UIManager.getColor("Component.borderColor")),
+                new EmptyBorder(10, 10, 10, 10)));
+
         JLabel title = new JLabel("Headers Configuration");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 14f)); 
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 14f));
         title.setBorder(new EmptyBorder(0,0,10,0));
         container.add(title, BorderLayout.NORTH);
 
-        // Modelo de tabla actualizado: Action | Header | Value
         DefaultTableModel headersModel = new DefaultTableModel(new Object[]{"Action", "Header", "Value"}, 0);
-        JTable headersTable = new JTable(headersModel); 
+        JTable headersTable = new JTable(headersModel);
         headersTable.setRowHeight(22);
-        
-        // Ajustar anchos de columnas
-        headersTable.getColumnModel().getColumn(0).setMaxWidth(100); // Action
+
+        headersTable.getColumnModel().getColumn(0).setMaxWidth(100);
         headersTable.getColumnModel().getColumn(0).setPreferredWidth(90);
 
         container.add(new JScrollPane(headersTable), BorderLayout.CENTER);
 
-        // Botones
         JPanel buttonsGrid = new JPanel(new GridLayout(0, 1, 5, 5));
-        JButton btnAdd = new JButton("Add"); 
+        JButton btnAdd = new JButton("Add");
         JButton btnEdit = new JButton("Edit");
-        JButton btnRemove = new JButton("Delete"); // Cambio de texto para no confundir
+        JButton btnRemove = new JButton("Delete Rule");
         JButton btnPaste = new JButton("Paste");
         btnAdd.setPreferredSize(new Dimension(80, 25));
         buttonsGrid.add(btnAdd); buttonsGrid.add(btnEdit); buttonsGrid.add(btnRemove); buttonsGrid.add(btnPaste);
-        
+
         JPanel flowWrapper = new JPanel(new BorderLayout()); flowWrapper.add(buttonsGrid, BorderLayout.NORTH);
         flowWrapper.setBorder(new EmptyBorder(0, 0, 0, 5));
         container.add(flowWrapper, BorderLayout.WEST);
 
-        // Cargar reglas existentes (Parsing nuevo formato)
+        // Cargar reglas...
         for (String rule : IdorTesterExtension.getCustomHeaders()) {
             String[] parts = rule.split("\\|", 3);
             if (parts.length >= 2) {
                 String action = parts[0];
                 String name = parts[1];
                 String val = parts.length > 2 ? parts[2] : "";
-                // Backward compatibility (si era formato antiguo "header: value")
-                if(!action.equals("REMOVE") && !action.equals("ADD")) {
-                   // Asumimos formato viejo, tratamos como ADD
-                   // Esto es solo por si tienes configs viejas en memoria, 
-                   // en realidad startAttack maneja el string, aquí es solo visual
-                }
+                if(!action.equals("REMOVE") && !action.equals("ADD")) { /* compatibility */ }
                 headersModel.addRow(new Object[]{action, name, val});
             }
         }
 
-        // --- LÓGICA DE GUARDADO ---
         Runnable saveLogic = () -> {
             List<String> newHeaders = new ArrayList<>();
             for (int i = 0; i < headersModel.getRowCount(); i++) {
                 String action = (String) headersModel.getValueAt(i, 0);
                 String h = (String) headersModel.getValueAt(i, 1);
                 String v = (String) headersModel.getValueAt(i, 2);
-                
-                // Formato interno: ACTION|NAME|VALUE
                 if (h != null && !h.isEmpty()) {
                     newHeaders.add(action + "|" + h + "|" + (v == null ? "" : v));
                 }
@@ -238,26 +235,24 @@ public class IdorTesterPanel extends JPanel {
             IdorTesterExtension.setCustomHeaders(newHeaders);
         };
 
-        // --- DIÁLOGO PERSONALIZADO ---
         btnAdd.addActionListener(e -> showHeaderDialog(headersModel, -1, saveLogic));
-        
+
         btnEdit.addActionListener(e -> {
             int row = headersTable.getSelectedRow();
             if (row >= 0) showHeaderDialog(headersModel, row, saveLogic);
         });
 
         btnRemove.addActionListener(e -> {
-            int row = headersTable.getSelectedRow(); 
+            int row = headersTable.getSelectedRow();
             if (row >= 0) { headersModel.removeRow(row); saveLogic.run(); }
         });
-        
-        // Paste simplificado (Asume formato Header:Value -> ADD)
+
         btnPaste.addActionListener(e -> {
             try {
                 String data = Toolkit.getDefaultToolkit().getSystemClipboard().getData(java.awt.datatransfer.DataFlavor.stringFlavor).toString();
                 if(data.contains(":")) {
-                    String[] parts = data.split(":", 2); 
-                    headersModel.addRow(new Object[]{"ADD", parts[0].trim(), parts[1].trim()}); 
+                    String[] parts = data.split(":", 2);
+                    headersModel.addRow(new Object[]{"ADD", parts[0].trim(), parts[1].trim()});
                     saveLogic.run();
                 }
             } catch (Exception ex) {}
@@ -266,7 +261,6 @@ public class IdorTesterPanel extends JPanel {
         return container;
     }
 
-    // Helper para mostrar el diálogo de Add/Edit
     private void showHeaderDialog(DefaultTableModel model, int row, Runnable saveCallback) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Header Rule", true);
         dialog.setLayout(new GridBagLayout());
@@ -274,12 +268,10 @@ public class IdorTesterPanel extends JPanel {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Componentes
         JComboBox<String> actionBox = new JComboBox<>(new String[]{"ADD / REPLACE", "REMOVE"});
         JTextField nameField = new JTextField(20);
         JTextField valueField = new JTextField(20);
 
-        // Pre-llenar si es Edit
         if (row >= 0) {
             String act = (String) model.getValueAt(row, 0);
             actionBox.setSelectedItem(act.equals("REMOVE") ? "REMOVE" : "ADD / REPLACE");
@@ -288,19 +280,15 @@ public class IdorTesterPanel extends JPanel {
             if (act.equals("REMOVE")) valueField.setEnabled(false);
         }
 
-        // Listener para deshabilitar valor si es REMOVE
         actionBox.addActionListener(e -> {
             valueField.setEnabled(!actionBox.getSelectedItem().equals("REMOVE"));
             if (actionBox.getSelectedItem().equals("REMOVE")) valueField.setText("");
         });
 
-        // Layout
         gbc.gridx=0; gbc.gridy=0; dialog.add(new JLabel("Action:"), gbc);
         gbc.gridx=1; dialog.add(actionBox, gbc);
-
         gbc.gridx=0; gbc.gridy=1; dialog.add(new JLabel("Header Name:"), gbc);
         gbc.gridx=1; dialog.add(nameField, gbc);
-
         gbc.gridx=0; gbc.gridy=2; dialog.add(new JLabel("Value:"), gbc);
         gbc.gridx=1; dialog.add(valueField, gbc);
 
@@ -308,14 +296,14 @@ public class IdorTesterPanel extends JPanel {
         JButton okBtn = new JButton("OK");
         JButton cancelBtn = new JButton("Cancel");
         btnPanel.add(okBtn); btnPanel.add(cancelBtn);
-        
+
         gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; dialog.add(btnPanel, gbc);
 
         okBtn.addActionListener(e -> {
             String action = actionBox.getSelectedItem().equals("REMOVE") ? "REMOVE" : "ADD";
             String name = nameField.getText().trim();
             String value = valueField.getText().trim();
-            
+
             if (!name.isEmpty()) {
                 if (row >= 0) {
                     model.setValueAt(action, row, 0);
@@ -337,7 +325,7 @@ public class IdorTesterPanel extends JPanel {
     }
 
     // ========================================
-    // MÉTODOS AUXILIARES (Sin cambios mayores)
+    // MÉTODOS AUXILIARES
     // ========================================
     private DefaultTableModel createRequestTableModel() {
         String[] columns = {"ID", "Host", "Method", "URL", "Status", "Length", "Time", "Similarity"};
@@ -357,9 +345,9 @@ public class IdorTesterPanel extends JPanel {
         String deltaStr = delta == 0 ? "(0)" : (delta > 0 ? "(+" + delta + ")" : "(" + delta + ")");
 
         tableModel.setValueAt(status, rowIndex, 4);
-        tableModel.setValueAt(length + " " + deltaStr, rowIndex, 5); 
+        tableModel.setValueAt(length + " " + deltaStr, rowIndex, 5);
         tableModel.setValueAt(responseTimeMs + " ms", rowIndex, 6);
-        tableModel.setValueAt(similarity + "%", rowIndex, 7); 
+        tableModel.setValueAt(similarity + "%", rowIndex, 7);
         tableModel.fireTableRowsUpdated(rowIndex, rowIndex);
     }
     private void configureSidebarButton(JToggleButton button, JPanel content) {
@@ -382,30 +370,48 @@ public class IdorTesterPanel extends JPanel {
     private void closeDrawer() {
         sidebarGroup.clearSelection(); drawerPanel.setVisible(false); drawerSplitPane.setDividerSize(0);
     }
+
+    // ========================================
+    // CLASE BOTÓN VERTICAL (REMASTERIZADA)
+    // ========================================
     class VerticalToggleButton extends JToggleButton {
         public VerticalToggleButton(String text) {
             super(text);
             setFont(new Font("SansSerif", Font.PLAIN, 12));
-            setForeground(Color.decode("#333333"));
-            setFocusPainted(false); setContentAreaFilled(false);
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            // Ajustamos el borde: Top/Bottom define el ancho visual, Left/Right el alto visual
             setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         }
         @Override public Dimension getPreferredSize() { Dimension d = super.getPreferredSize(); return new Dimension(d.height, d.width); }
+
         @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // FIX: Usar colores del UIManager para adaptarse al tema
             if (isSelected()) {
-                g2.setColor(Color.WHITE); g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.setColor(new Color(231, 111, 67)); g2.fillRect(getWidth() - 3, 0, 3, getHeight());
+                // Color de fondo cuando está seleccionado (Usualmente igual que el Panel)
+                g2.setColor(UIManager.getColor("Panel.background"));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+
+                // Indicador naranja (Este sí lo dejamos fijo por marca, o usamos Accent Color si Burp expone uno)
+                g2.setColor(new Color(231, 111, 67));
+                g2.fillRect(getWidth() - 3, 0, 3, getHeight());
             }
+
             AffineTransform original = g2.getTransform();
             g2.translate(getWidth() / 2.0, getHeight() / 2.0); g2.rotate(Math.toRadians(90));
-            g2.setColor(getForeground());
+
+            // FIX: Color de texto dinámico (blanco en Dark, negro en Light)
+            g2.setColor(UIManager.getColor("Label.foreground"));
+
             FontMetrics fm = g2.getFontMetrics(); String text = getText();
             g2.drawString(text, -fm.stringWidth(text) / 2, fm.getAscent() / 2 - 2);
             g2.setTransform(original); g2.dispose();
         }
     }
+
     public void refreshEditorIfSelected(int updatedRowIndex) {
         int viewRow = requestTable.getSelectedRow();
         if (viewRow >= 0) {
